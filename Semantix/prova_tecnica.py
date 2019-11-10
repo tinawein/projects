@@ -48,65 +48,55 @@ class Gerenciador:
         # Tratamento deo arquivo de log de julho
         log_jul = tratamento_log(self._nasa_log_jul)
 
-        # Tratamento deo arquivo de log de agosto
+        # Tratamento do arquivo de log de agosto
         log_ago = tratamento_log(self._nasa_log_ago)
 
-        # Primeira questao da prova tecnica
-        print('Numero de hosts unicos - julho')
-        resultado1_jul = hosts_unicos(log_jul)
-        resultado1_jul.show()
+        # Union das duas logs
+        union_log = union_logs(log_jul, log_ago)
 
-        print('Numero de hosts unicos - agosto')
-        resultado1_ago = hosts_unicos(log_ago)
-        resultado1_ago.show()
+        # Primeira questao da prova tecnica
+        print('Numero de hosts unicos')
+        resultado1 = hosts_unicos(union_log)
+        resultado1.show(1, False)
 
         # Segunda questao da prova tecnica
-        print('Total​ ​de​ ​erros​ ​404 - julho')
-        resultado2_jul = erro_404(log_jul)
-        resultado2_jul.show()
-
-        print('Total​ ​de​ ​erros​ ​404 - agosto')
-        resultado2_ago = erro_404(log_ago)
-        resultado2_ago.show()
+        print('Total​ ​de​ ​erros​ ​404')
+        resultado2 = erro_404(union_log)
+        resultado2.show(1, False)
 
         # Terceira questao da prova tecnica
-        print('Os​ ​5​ ​URLs​ ​que​ ​mais​ ​causaram​ ​erro​ ​404 - julho')
-        resultado3_jul = url_erro_404(log_jul)
-        resultado3_jul.show()
-
-        print('Os​ ​5​ ​URLs​ ​que​ ​mais​ ​causaram​ ​erro​ ​404 - agosto')
-        resultado3_ago = url_erro_404(log_ago)
-        resultado3_ago.show()
+        print('Os​ ​5​ ​URLs​ ​que​ ​mais​ ​causaram​ ​erro​ ​404')
+        resultado3 = url_erro_404(union_log)
+        resultado3.show(5, False)
 
         # Quarta questao da prova tecnica
-        print('Quantidade​ ​de​ ​erros​ ​404​ ​por​ ​dia - julho')
-        resultado4_jul = erro_404_dia(log_jul)
-        resultado4_jul.show(40, False)
-
-        print('Quantidade​ ​de​ ​erros​ ​404​ ​por​ ​dia - agosto')
-        resultado4_ago = erro_404_dia(log_ago)
-        resultado4_ago.show(40, False)
+        print('Quantidade​ ​de​ ​erros​ ​404​ ​por​ ​dia')
+        resultado4 = erro_404_dia(union_log)
+        resultado4.show(100, False)
 
         # Quinta questao da prova tecnica
-        print('O​ ​total​ ​de​ ​bytes​ ​retornados - julho')
-        resultado5_jul = retorno_bytes(log_jul)
-        resultado5_jul.show()
+        print('O​ ​total​ ​de​ ​bytes​ ​retornados')
+        resultado5 = retorno_bytes(union_log)
+        resultado5.show(1, False)
 
-        print('O​ ​total​ ​de​ ​bytes​ ​retornados - agosto')
-        resultado5_ago = retorno_bytes(log_ago)
-        resultado5_ago.show()
-
-        return resultado5_ago
+        return resultado5
 
 # Funcao de tratamento dos arquivos de log
 def tratamento_log(df):
     return (df
-            .select(df['_c0'].alias('host'),
-                    f.concat(df['_c3'], f.lit(' '), df['_c4']).alias('date'),
-                    df['_c5'].alias('requisicao'),
-                    df['_c6'].alias('retorno_http'),
-                    df['_c7'].alias('bytes')
-                    )
+           .select(df['_c0'].alias('host'),
+                   f.concat(df['_c3'], f.lit(' '), df['_c4']).alias('date'),
+                   df['_c5'].alias('requisicao'),
+                   f.split(df['_c5'], ' ').alias('requisicao_tratado'),
+                   df['_c6'].alias('retorno_http'),
+                   df['_c7'].alias('bytes')
+                   )
+           .withColumn('url', f.concat(f.col('host'), f.col('requisicao_tratado').getItem(1)))
+           ).drop('requisicao_tratado')
+
+def union_logs(df1, df2):
+    return (df1
+            .union(df2)
             )
 
 # Funcao para contar o numero de hosts unicos
@@ -140,10 +130,10 @@ def url_erro_404(df):
            .filter(df['retorno_http'] == '404')
            )
     df2 = (df1
-           .select(df1['host'],
+           .select(df1['url'],
                    df1['retorno_http']
                    )
-           .groupBy('host')
+           .groupBy('url')
            .agg(f.count('retorno_http').alias('tot_erro_404'))
            .sort(f.col('tot_erro_404').desc())
            .limit(5))
