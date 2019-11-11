@@ -94,6 +94,7 @@ def tratamento_log(df):
            .withColumn('url', f.concat(f.col('host'), f.col('requisicao_tratado').getItem(1)))
            ).drop('requisicao_tratado')
 
+# Funcao que realiza o union entre as logs de julho e agosto
 def union_logs(df1, df2):
     return (df1
             .union(df2)
